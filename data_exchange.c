@@ -27,15 +27,16 @@ void data_exchange(char *url,const char* out_file,int verbose){
 	//открытие сокета
 	int Socket = socket(AF_INET, SOCK_STREAM, 0);
 
-	if (Socket < 0)
-	     printf("Error opening socket\n");
+	if (Socket < 0){
+	     perror("Error opening socket\n");
+	     goto clear;}
 //получения ip сервера
 	server = gethostbyname(aloc_url);
 
 	if (server == NULL)
 	  {
-	   printf("gethostbyname() failed\n");
-	   return;
+	   perror("gethostbyname() failed\n");
+	   goto clear;
 	  }
 	//заполения струтуры сервера
 	bzero((char *) &serveraddr, sizeof(serveraddr));
@@ -45,33 +46,25 @@ void data_exchange(char *url,const char* out_file,int verbose){
 
 	serveraddr.sin_port = htons(PORT);
 	//коннескт к серверу
-	if (connect(Socket, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0)
-	     printf("Error Connecting\n");
+	if (connect(Socket, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0){
+	     perror("Error Connecting\n");
+		 goto clear;}
 //запрос на получения контента.
 	sprintf(request, "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n", get, aloc_url);
 	if(verbose)
 	  printf("\n%s", request);
 	//отправка запроса на сервер
 	if (send(Socket, request, strlen(request), 0) < 0){
-	    printf("Error with send()");
-	    return;}
+	    perror("Error with send()");
+	    goto clear;}
 
 	 bzero(request, 1024);
-	 int stat=1;
 	 int c;
 	 //получения данных от сервера
 	 while((c=recv(Socket, request, 1023, 0))>0){
-		 if(stat){
-			 char *ptr=strstr(request,"\r\n\r\n");
-			 *(ptr+3)=0;
-			 if(verbose)
-			 printf("%s",request);
-			 stat=0;
-			 fputs(ptr+4,pfile);
-			 continue;
-		 	 }
 		 fwrite(request,sizeof(char),c,pfile);
 		 }
+	 clear:
 	 //закрытие сокета
 	 close(Socket);
 	 //закрытие файла
